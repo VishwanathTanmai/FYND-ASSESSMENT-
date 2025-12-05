@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Analytics & Insights{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold text-white mb-2">
+                        <i class="fas fa-tachometer-alt me-3"></i>
+                        Admin Dashboard
+                    </h1>
+                    <p class="text-white-50 mb-0">Real-time feedback analytics and AI insights</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-light me-2" onclick="refreshData()">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                    <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-light">
+                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Analytics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="analytics-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="metric-value">{{ analytics.total_feedback }}</div>
+                        <div>Total Feedback</div>
+                    </div>
+                    <i class="fas fa-comments fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="analytics-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="metric-value">{{ analytics.average_rating }}</div>
+                        <div>Average Rating</div>
+                    </div>
+                    <i class="fas fa-star fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="analytics-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="metric-value">{{ analytics.recent_feedback_24h }}</div>
+                        <div>Last 24 Hours</div>
+                    </div>
+                    <i class="fas fa-clock fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6">
+            <div class="analytics-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="metric-value" id="highPriorityCount">
+                            {{ analytics.priority_distribution.get('high', 0) + analytics.priority_distribution.get('critical', 0) }}
+                        </div>
+                        <div>High Priority</div>
+                    </div>
+                    <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Rating Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="ratingChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Category Breakdown
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="categoryChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Feedback List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        Live Feedback Monitor
+                    </h5>
+                    <div>
+                        <select class="form-select form-select-sm" id="priorityFilter" onchange="filterFeedback()">
+                            <option value="all">All Priorities</option>
+                            <option value="critical">Critical</option>
+                            <option value="high">High</option>
+                            <option value="medium">Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="feedbackList">
+                        {% for feedback in feedback_list %}
+                        <div class="feedback-card priority-{{ feedback.priority_level }}" data-priority="{{ feedback.priority_level }}">
+                            <div class="card-body p-4">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="me-3">
+                                                {% for i in range(1, 6) %}
+                                                    {% if i <= feedback.user_rating %}
+                                                        <i class="fas fa-star text-warning"></i>
+                                                    {% else %}
+                                                        <i class="far fa-star text-muted"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                            <span class="badge bg-{{ 'danger' if feedback.priority_level == 'critical' else 'warning' if feedback.priority_level == 'high' else 'info' if feedback.priority_level == 'medium' else 'success' }}">
+                                                {{ feedback.priority_level.title() }}
+                                            </span>
+                                            <span class="badge bg-secondary ms-2">{{ feedback.category.title() }}</span>
+                                            <small class="text-muted ms-auto">{{ feedback.timestamp[:19] }}</small>
+                                        </div>
+                                        
+                                        <h6 class="mb-2">Customer Review:</h6>
+                                        <p class="mb-3">{{ feedback.user_review }}</p>
+                                        
+                                        <h6 class="mb-2 text-primary">AI Summary:</h6>
+                                        <p class="mb-2 text-muted">{{ feedback.ai_summary }}</p>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <div class="bg-light p-3 rounded">
+                                            <h6 class="text-success mb-2">
+                                                <i class="fas fa-lightbulb me-2"></i>
+                                                Recommended Actions:
+                                            </h6>
+                                            <p class="mb-0 small">{{ feedback.recommended_actions }}</p>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <small class="text-muted">Sentiment Score:</small>
+                                                <span class="badge bg-{{ 'success' if feedback.sentiment_score > 0.2 else 'danger' if feedback.sentiment_score < -0.2 else 'warning' }}">
+                                                    {{ "%.2f"|format(feedback.sentiment_score) }}
+                                                </span>
+                                            </div>
+                                            
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar bg-{{ 'success' if feedback.sentiment_score > 0 else 'danger' }}" 
+                                                     style="width: {{ ((feedback.sentiment_score + 1) * 50)|round }}%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if not feedback_list %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No feedback yet</h5>
+                        <p class="text-muted">Feedback will appear here as customers submit reviews.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize charts
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(refreshData, 30000);
+});
+
+function initializeCharts() {
+    // Rating Distribution Chart
+    const ratingCtx = document.getElementById('ratingChart').getContext('2d');
+    const ratingData = {{ analytics.rating_distribution | tojson }};
+    
+    new Chart(ratingCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['1 Star', '2 Stars', '3 Stars', '4 Stars', '5 Stars'],
+            datasets: [{
+                data: [
+                    ratingData['1'] || 0,
+                    ratingData['2'] || 0,
+                    ratingData['3'] || 0,
+                    ratingData['4'] || 0,
+                    ratingData['5'] || 0
+                ],
+                backgroundColor: [
+                    '#ef4444',
+                    '#f97316',
+                    '#eab308',
+                    '#22c55e',
+                    '#10b981'
+                ],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    
+    // Category Distribution Chart
+    const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+    const categoryData = {{ analytics.category_distribution | tojson }};
+    
+    new Chart(categoryCtx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(categoryData).map(key => key.charAt(0).toUpperCase() + key.slice(1)),
+            datasets: [{
+                label: 'Feedback Count',
+                data: Object.values(categoryData),
+                backgroundColor: [
+                    '#6366f1',
+                    '#8b5cf6',
+                    '#ec4899',
+                    '#f59e0b',
+                    '#10b981',
+                    '#06b6d4'
+                ],
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+async function refreshData() {
+    try {
+        showAlert('Refreshing data...', 'info');
+        
+        // Refresh analytics
+        const analyticsResponse = await fetch('/api/admin/analytics');
+        const analytics = await analyticsResponse.json();
+        
+        // Refresh feedback list
+        const feedbackResponse = await fetch('/api/admin/feedback');
+        const feedbackList = await feedbackResponse.json();
+        
+        // Update UI
+        updateAnalyticsCards(analytics);
+        updateFeedbackList(feedbackList);
+        
+        showAlert('Data refreshed successfully!', 'success');
+        
+    } catch (error) {
+        showAlert('Error refreshing data', 'danger');
+        console.error('Refresh error:', error);
+    }
+}
+
+function updateAnalyticsCards(analytics) {
+    // Update metric values
+    document.querySelector('.analytics-card .metric-value').textContent = analytics.total_feedback;
+    document.querySelectorAll('.analytics-card .metric-value')[1].textContent = analytics.average_rating;
+    document.querySelectorAll('.analytics-card .metric-value')[2].textContent = analytics.recent_feedback_24h;
+    
+    const highPriorityCount = (analytics.priority_distribution.high || 0) + (analytics.priority_distribution.critical || 0);
+    document.getElementById('highPriorityCount').textContent = highPriorityCount;
+}
+
+function updateFeedbackList(feedbackList) {
+    const container = document.getElementById('feedbackList');
+    
+    if (feedbackList.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No feedback yet</h5>
+                <p class="text-muted">Feedback will appear here as customers submit reviews.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = feedbackList.map(feedback => `
+        <div class="feedback-card priority-${feedback.priority_level}" data-priority="${feedback.priority_level}">
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="me-3">
+                                ${generateStars(feedback.user_rating)}
+                            </div>
+                            <span class="badge bg-${getPriorityColor(feedback.priority_level)}">
+                                ${feedback.priority_level.charAt(0).toUpperCase() + feedback.priority_level.slice(1)}
+                            </span>
+                            <span class="badge bg-secondary ms-2">${feedback.category.charAt(0).toUpperCase() + feedback.category.slice(1)}</span>
+                            <small class="text-muted ms-auto">${formatDateTime(feedback.timestamp)}</small>
+                        </div>
+                        
+                        <h6 class="mb-2">Customer Review:</h6>
+                        <p class="mb-3">${feedback.user_review}</p>
+                        
+                        <h6 class="mb-2 text-primary">AI Summary:</h6>
+                        <p class="mb-2 text-muted">${feedback.ai_summary}</p>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="bg-light p-3 rounded">
+                            <h6 class="text-success mb-2">
+                                <i class="fas fa-lightbulb me-2"></i>
+                                Recommended Actions:
+                            </h6>
+                            <p class="mb-0 small">${feedback.recommended_actions}</p>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <small class="text-muted">Sentiment Score:</small>
+                                <span class="badge bg-${getSentimentColor(feedback.sentiment_score)}">
+                                    ${feedback.sentiment_score.toFixed(2)}
+                                </span>
+                            </div>
+                            
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-${feedback.sentiment_score > 0 ? 'success' : 'danger'}" 
+                                     style="width: ${((feedback.sentiment_score + 1) * 50)}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterFeedback() {
+    const filter = document.getElementById('priorityFilter').value;
+    const feedbackCards = document.querySelectorAll('.feedback-card');
+    
+    feedbackCards.forEach(card => {
+        if (filter === 'all' || card.dataset.priority === filter) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function generateStars(rating) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+            stars += '<i class="fas fa-star text-warning"></i>';
+        } else {
+            stars += '<i class="far fa-star text-muted"></i>';
+        }
+    }
+    return stars;
+}
+
+function getPriorityColor(priority) {
+    const colors = {
+        'critical': 'danger',
+        'high': 'warning',
+        'medium': 'info',
+        'low': 'success'
+    };
+    return colors[priority] || 'secondary';
+}
+
+function getSentimentColor(score) {
+    if (score > 0.2) return 'success';
+    if (score < -0.2) return 'danger';
+    return 'warning';
+}
+</script>
+{% endblock %}

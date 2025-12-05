@@ -1,0 +1,68 @@
+{
+	"folders": [
+		{
+			"name": "Fynd AI Assessment",
+			"path": "."
+		},
+		{
+			"name": "Task 1 - Rating Prediction",
+			"path": "./task1-rating-prediction"
+		},
+		{
+			"name": "Task 2 - Feedback System",
+			"path": "./task2-feedback-system"
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "python",
+		"python.terminal.activateEnvironment": true,
+		"files.associations": {
+			"*.py": "python",
+			"*.ipynb": "jupyter-notebook",
+			"*.html": "html",
+			"*.css": "css",
+			"*.js": "javascript"
+		},
+		"editor.formatOnSave": true,
+		"python.formatting.provider": "black",
+		"python.linting.enabled": true,
+		"python.linting.pylintEnabled": true,
+		"jupyter.askForKernelRestart": false,
+		"jupyter.interactiveWindow.textEditor.executeSelection": true
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-python.python",
+			"ms-toolsai.jupyter",
+			"ms-vscode.vscode-json",
+			"bradlc.vscode-tailwindcss",
+			"formulahendry.auto-rename-tag",
+			"esbenp.prettier-vscode"
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Task 1 - Rating Prediction",
+				"type": "python",
+				"request": "launch",
+				"program": "${workspaceFolder}/task1-rating-prediction/demo_simulation.py",
+				"console": "integratedTerminal",
+				"cwd": "${workspaceFolder}/task1-rating-prediction"
+			},
+			{
+				"name": "Task 2 - Feedback System",
+				"type": "python",
+				"request": "launch",
+				"program": "${workspaceFolder}/task2-feedback-system/app.py",
+				"console": "integratedTerminal",
+				"cwd": "${workspaceFolder}/task2-feedback-system",
+				"env": {
+					"FLASK_ENV": "development",
+					"FLASK_DEBUG": "1"
+				}
+			}
+		]
+	}
+}

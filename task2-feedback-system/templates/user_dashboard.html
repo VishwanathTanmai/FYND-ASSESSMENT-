@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}User Dashboard - Submit Feedback{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="display-5 fw-bold text-white mb-3">
+                    <i class="fas fa-comment-dots me-3"></i>
+                    Share Your Experience
+                </h1>
+                <p class="lead text-white-50">
+                    Your feedback helps us improve. Get instant AI-powered responses to your reviews.
+                </p>
+            </div>
+            
+            <!-- Feedback Form -->
+            <div class="card fade-in-up">
+                <div class="card-body p-5">
+                    <form id="feedbackForm">
+                        <!-- Star Rating -->
+                        <div class="text-center mb-4">
+                            <h4 class="mb-3">How would you rate your experience?</h4>
+                            <div class="star-rating" id="starRating">
+                                <i class="fas fa-star star" data-rating="1"></i>
+                                <i class="fas fa-star star" data-rating="2"></i>
+                                <i class="fas fa-star star" data-rating="3"></i>
+                                <i class="fas fa-star star" data-rating="4"></i>
+                                <i class="fas fa-star star" data-rating="5"></i>
+                            </div>
+                            <div id="ratingText" class="text-muted mt-2">Click a star to rate</div>
+                            <input type="hidden" id="selectedRating" value="">
+                        </div>
+                        
+                        <!-- Review Text -->
+                        <div class="mb-4">
+                            <label for="reviewText" class="form-label h5">
+                                <i class="fas fa-edit me-2"></i>
+                                Tell us about your experience
+                            </label>
+                            <textarea 
+                                class="form-control form-control-lg" 
+                                id="reviewText" 
+                                rows="5" 
+                                placeholder="Share your thoughts, suggestions, or concerns. Be as detailed as you'd like..."
+                                required
+                            ></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Your feedback will be analyzed by AI to provide you with a personalized response.
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                <span id="submitText">Submit Feedback</span>
+                                <div class="spinner-border spinner-border-sm ms-2 loading-spinner" id="loadingSpinner"></div>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- AI Response Section -->
+            <div id="aiResponseSection" class="mt-4" style="display: none;">
+                <div class="ai-response fade-in-up">
+                    <h5 class="mb-3">
+                        <i class="fas fa-robot me-2"></i>
+                        AI Response
+                    </h5>
+                    <div id="aiResponseText"></div>
+                    <div class="mt-3">
+                        <small class="text-white-50">
+                            <i class="fas fa-clock me-1"></i>
+                            Response generated in real-time using OpenAI GPT
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Success Message -->
+            <div id="successMessage" class="mt-4" style="display: none;">
+                <div class="card border-success">
+                    <div class="card-body text-center p-4">
+                        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                        <h4 class="text-success">Thank You!</h4>
+                        <p class="mb-3">Your feedback has been successfully submitted and analyzed.</p>
+                        <button class="btn btn-outline-primary" onclick="resetForm()">
+                            <i class="fas fa-plus me-2"></i>
+                            Submit Another Review
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Feedback Section -->
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments me-2"></i>
+                        Recent Community Feedback
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="recentFeedback">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading recent feedback...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.star');
+    const ratingText = document.getElementById('ratingText');
+    const selectedRating = document.getElementById('selectedRating');
+    const feedbackForm = document.getElementById('feedbackForm');
+    
+    const ratingTexts = {
+        1: '⭐ Poor - We can do better',
+        2: '⭐⭐ Fair - Room for improvement', 
+        3: '⭐⭐⭐ Good - Satisfactory experience',
+        4: '⭐⭐⭐⭐ Very Good - Great experience',
+        5: '⭐⭐⭐⭐⭐ Excellent - Outstanding!'
+    };
+    
+    // Star rating functionality
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const rating = parseInt(this.dataset.rating);
+            selectedRating.value = rating;
+            
+            // Update star display
+            stars.forEach((s, index) => {
+                if (index < rating) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+            
+            // Update rating text
+            ratingText.textContent = ratingTexts[rating];
+            ratingText.className = 'mt-2 fw-bold text-primary';
+        });
+        
+        star.addEventListener('mouseenter', function() {
+            const rating = parseInt(this.dataset.rating);
+            stars.forEach((s, index) => {
+                if (index < rating) {
+                    s.style.color = '#ffc107';
+                } else {
+                    s.style.color = '#ddd';
+                }
+            });
+        });
+    });
+    
+    // Reset stars on mouse leave
+    document.getElementById('starRating').addEventListener('mouseleave', function() {
+        const currentRating = parseInt(selectedRating.value) || 0;
+        stars.forEach((s, index) => {
+            if (index < currentRating) {
+                s.style.color = '#ffc107';
+            } else {
+                s.style.color = '#ddd';
+            }
+        });
+    });
+    
+    // Form submission
+    feedbackForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const rating = selectedRating.value;
+        const review = document.getElementById('reviewText').value.trim();
+        
+        if (!rating) {
+            showAlert('Please select a star rating', 'warning');
+            return;
+        }
+        
+        if (!review) {
+            showAlert('Please write your review', 'warning');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        
+        submitBtn.disabled = true;
+        submitText.textContent = 'Processing...';
+        loadingSpinner.style.display = 'inline-block';
+        
+        try {
+            const response = await fetch('/api/submit_feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rating: parseInt(rating),
+                    review: review
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Show AI response
+                document.getElementById('aiResponseText').textContent = result.ai_response;
+                document.getElementById('aiResponseSection').style.display = 'block';
+                
+                // Show success message
+                setTimeout(() => {
+                    document.getElementById('successMessage').style.display = 'block';
+                    document.getElementById('feedbackForm').style.display = 'none';
+                    document.getElementById('aiResponseSection').style.display = 'none';
+                }, 2000);
+                
+                // Refresh recent feedback
+                loadRecentFeedback();
+                
+                showAlert('Feedback submitted successfully!', 'success');
+            } else {
+                showAlert('Error: ' + result.error, 'danger');
+            }
+        } catch (error) {
+            showAlert('Network error. Please try again.', 'danger');
+            console.error('Error:', error);
+        } finally {
+            // Reset button state
+            submitBtn.disabled = false;
+            submitText.textContent = 'Submit Feedback';
+            loadingSpinner.style.display = 'none';
+        }
+    });
+    
+    // Load recent feedback
+    loadRecentFeedback();
+});
+
+function resetForm() {
+    document.getElementById('feedbackForm').style.display = 'block';
+    document.getElementById('successMessage').style.display = 'none';
+    document.getElementById('aiResponseSection').style.display = 'none';
+    
+    // Reset form
+    document.getElementById('feedbackForm').reset();
+    document.getElementById('selectedRating').value = '';
+    document.getElementById('ratingText').textContent = 'Click a star to rate';
+    document.getElementById('ratingText').className = 'text-muted mt-2';
+    
+    // Reset stars
+    document.querySelectorAll('.star').forEach(star => {
+        star.classList.remove('active');
+        star.style.color = '#ddd';
+    });
+}
+
+async function loadRecentFeedback() {
+    try {
+        const response = await fetch('/api/admin/feedback');
+        
+        if (response.ok) {
+            const feedback = await response.json();
+            displayRecentFeedback(feedback.slice(0, 5)); // Show last 5 feedback
+        } else {
+            // Show sample feedback if admin API is not accessible
+            displaySampleFeedback();
+        }
+    } catch (error) {
+        displaySampleFeedback();
+    }
+}
+
+function displayRecentFeedback(feedbackList) {
+    const container = document.getElementById('recentFeedback');
+    
+    if (feedbackList.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <p class="text-muted">No feedback yet. Be the first to share your experience!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = feedbackList.map(feedback => `
+        <div class="border-bottom pb-3 mb-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="mb-2">
+                        ${generateStars(feedback.user_rating)}
+                        <span class="ms-2 text-muted">${formatTimeAgo(feedback.timestamp)}</span>
+                    </div>
+                    <p class="mb-1">${feedback.user_review.substring(0, 150)}${feedback.user_review.length > 150 ? '...' : ''}</p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function displaySampleFeedback() {
+    const sampleFeedback = [
+        {
+            user_rating: 5,
+            user_review: "Excellent service! The team was very professional and delivered exactly what was promised.",
+            timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() // 30 minutes ago
+        },
+        {
+            user_rating: 4,
+            user_review: "Good experience overall. There were minor delays but the quality was great.",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() // 2 hours ago
+        },
+        {
+            user_rating: 3,
+            user_review: "Average service. It was okay but nothing exceptional. Could be improved.",
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString() // 5 hours ago
+        }
+    ];
+    
+    displayRecentFeedback(sampleFeedback);
+}
+
+function generateStars(rating) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        if (i <= rating) {
+            stars += '<i class="fas fa-star text-warning"></i>';
+        } else {
+            stars += '<i class="far fa-star text-muted"></i>';
+        }
+    }
+    return stars;
+}
+</script>
+{% endblock %}
